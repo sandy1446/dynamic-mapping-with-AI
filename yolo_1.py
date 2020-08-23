@@ -24,12 +24,11 @@ def clear():
     # for mac and linux(here, os.name is 'posix') 
     else: 
         _ = system('clear')
+#function for determining Scaling constant for Calibration
 def Scale(xinput):
 	f=open("/home/sandy/Desktop/project/S mean.txt",'r')
-	#print("a")
 	all_lines = [[float(num) for num in line.split()] for line in f]
 	x,s=zip(*all_lines)
-	#print(x)
 	x=sorted(x)
 	y=sorted(s,reverse=True)
 	x1=x[0]
@@ -37,12 +36,9 @@ def Scale(xinput):
 	x2=x[len(x)-1]
 	y2=y[len(y)-1]
 	c=xinput
-	print(c)
-	
 	d=(c-x1)*(y2-y1)/(x2-x1)+y1
-	print(d)
-	return(d)
 	f.close()
+	return(d)
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -93,9 +89,11 @@ H = None
 print("[INFO] accessing video stream...")
 vs = cv2.VideoCapture(args["input"] if args["input"] else 0)
 writer = None
+#open file for writing outputs after 3d reconstruction
 f=open("boundary.txt",'w')
 w_f="SN;Class IDs;X coordinate;Y coordinate;Time;MicroSec\n"
 f.write(w_f)
+#initialize variables
 cx=[]
 cy=[]
 cm=[]
@@ -132,6 +130,7 @@ while True:
 	boxes = []
 	confidences = []
 	classIDs = []
+	# initilize variables for counting
 	count_person=0
 	count_car=0
 	count_bus=0
@@ -193,6 +192,7 @@ while True:
 				confidences[i])
 			cv2.putText(frame, text, (x, y - 5),
 				cv2.FONT_HERSHEY_SIMPLEX, 0.2, color, 2)
+			# count individual objects
 			if LABELS[classIDs[i]]=="car":
 				count_car+=1
 			if LABELS[classIDs[i]]=="truck" or LABELS[classIDs[i]]=="bus":
@@ -200,7 +200,7 @@ while True:
 			if LABELS[classIDs[i]]=="person" or LABELS[classIDs[i]]=="motorbike":
 				count_person+=1
 			cv2.line(frame,(cx[i],cy[i]),(cx[i]+1,cy[i]+1), (0,255,255),1)
-			
+	# Display information on image frame		
 	tot_car="car : "+str(count_car)
 	tot_truck="truck : "+str(count_truck)
 	tot_person="Motorbike : "+str(count_person)
@@ -220,41 +220,37 @@ while True:
 	# writer has not been initialized, do so now
 	
 	if len(idxs)>0:
+		# Loading parameters for 3d reconstruction
 		workingFolder="/home/sandy/Desktop/project/data1"
+		#Scalar Parameter
 		s_describe=np.loadtxt(workingFolder+'/s mean.txt', delimiter=',')
-		#print(s_mean)
+		#Camera Intrinsic Parameter
 		cameramxt=np.loadtxt(workingFolder+'/Camera Matrix.txt', delimiter=',')
 		inverse_cameramxt=np.linalg.inv(cameramxt)
-		#print(inverse_cameramxt)
+		#Camera Extrinsic Translation Vector
 		translation_vector=np.loadtxt(workingFolder+'/Translation vector.txt', delimiter=',')
 		tvec=np.array(translation_vector,dtype=np.float32).reshape((3,1))
-		#print("\n",tvec)
+		#Camera Extrinsic Rotation Matrix
 		inverse_R_mtx=np.loadtxt(workingFolder+'/Inverse R.txt',delimiter=',')
+		#obtain Datetime information
 		now = datetime.now()
-		print(now.microsecond)
 		C_time=now.strftime("%H:%M:%S")+str(now.microsecond*1e-6).replace('0.','.')
+		#3d reconstruction
 		for i in range(len(boxes)):
 			if LABELS[classIDs[i]] in ("car","truck","bus","person","motorbike"):
 				s=Scale(float(cy[i]))
 				uv_1=np.array([[cx[i],cy[i],1]], dtype=np.float32)
 				uv_1=uv_1.T
-				#print(uv_1)
 				suv_1=s*uv_1
-				#print("\n",suv_1)
 				xyz_c=inverse_cameramxt.dot(suv_1)
-				#print(xyz_c)
 				xyz_c=xyz_c-tvec
-				#print("\n",xyz_c[0])
 				XYZ=inverse_R_mtx.dot(xyz_c)
-				#print("\n",xyz_c)
 				XYZ=np.array(XYZ,dtype="float")
 				text=str(round(float(XYZ[0]),5))+","+str(round(float(XYZ[1]),5))
 				detail=str(i+1)+";"+LABELS[classIDs[i]]+";"+str(float(XYZ[0]))+","+str(float(XYZ[1]))+";"+C_time+"\n"
 				f.write(detail)
-				#print(detail)
 				cv2.putText(frame,text,(cx[i],cy[i]),font,0.25,(255,255,255),1)
 				cv2.putText(frame,str(len(boxes)+1),(W-400,130),font,0.5,(0,0,255),1)
-				#time.sleep()
 			k+=1
 		clear()
 	# update the FPS counter
@@ -276,7 +272,7 @@ while True:
 		cv2.imshow("Frame", frame)
 		key = cv2.waitKey(1) & 0xFF
 
-		# if the `q` key was pressed, break from the loop
+		# if the `q` key was pressed, break from the loop, convert txt file to csv
 		if key == ord("q"):
 			f.close()
 			read_file = pd.read_csv (r'boundary.txt')
