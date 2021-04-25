@@ -16,12 +16,21 @@ database=firebase.database()
 var ref = database.ref('/data/');
 ref.on('value', gotData)
 
+var mymap = L.map('mapid').setView([28.18944518896866, 83.95839600793285], 15);
 
+L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox/streets-v11',
+		tileSize: 512,
+		zoomOffset: -1
+}).addTo(mymap);
 function LineChart(li,mi,he,time){
   const score=[0.5,1,3]
 
   const labels = time
-
+  
   var lineChart=new Chart(chl, {
     type: 'line',
     data: {
@@ -47,13 +56,14 @@ function LineChart(li,mi,he,time){
       }],
     },
   });
+  scr=(li[4]*score[0]+mi[4]*score[1]+he[4]*score[2])/20
   var bar=new Chart(den,{
     type: 'bar',
     data: {
       label:'Density',
       datasets: [{
         label:'Overall',
-        data:[(li[4]*score[0]+mi[4]*score[1]+he[4]*score[2])/20],
+        data:[(scr)/20],
         backgroundColor:[
         'rgba(255, 99, 132, 0.2)'
         ],
@@ -90,6 +100,28 @@ function LineChart(li,mi,he,time){
       }
   }
   })
+  if(scr <= 0.4){
+    L.circle([28.18944518896866, 83.95839600793285], {
+        color: 'blue',
+        fillOpacity: 0.5,
+        radius: 100
+        }).addTo(mymap).bindPopup("<a href='#liChart'>Chart</a>");
+  }
+  else if(scr > 0.4 && scr <=0.7){
+      L.circle([28.18944518896866, 83.95839600793285], {
+          color: 'green',
+          fillOpacity: 0.5,
+          radius: 100
+          }).addTo(mymap).bindPopup("<a href='#liChart'>Chart</a>");
+  }
+  else{
+      L.circle([28.18944518896866, 83.95839600793285], {
+          color: 'red',
+          fillColor:'#f03',
+          fillOpacity: 0.05,
+          radius: 50
+          }).addTo(mymap).bindPopup("<a href='#liChart'>Chart</a>");
+  }
 
 }
 
